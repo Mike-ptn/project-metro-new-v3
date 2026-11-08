@@ -235,7 +235,10 @@ endef
 export COV_HELPER_PL
 
 define COV_GUI_TCL
-package require Tk
+if {[info exists ::env(TK_LIBRARY)] && $$::env(TK_LIBRARY) ne ""} {
+  lappend auto_path $$::env(TK_LIBRARY)
+}
+catch {package require Tk}
 wm title . "Cadence Xcelium / IMC Coverage Viewer - IP_MERGE"
 wm geometry . 980x540
 frame .hdr -bg "#dfe6ed" -padx 10 -pady 6 -relief raised -bd 1
@@ -344,8 +347,15 @@ ifeq ($(TESTNAME),IP_MERGE)
 	@test -d "log/cov_work/scope/IP_MERGE" || { echo "No merged coverage DB: log/cov_work/scope/IP_MERGE. Run make cov_merge first."; exit 1; }
 	@if [ -n "$(IMC_BIN)" ]; then \
 	  "$(IMC_BIN)" -gui -load log/cov_work/scope/IP_MERGE & \
+	elif [ -x /usr/bin/wish ] && [ -f /usr/share/tcl8.6/init.tcl ]; then \
+	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; \
+	  env -u LD_LIBRARY_PATH -u TCL_LIBRARY -u TK_LIBRARY PATH=/usr/bin:/bin /usr/bin/wish log/.cov_gui.tcl & \
 	elif command -v wish >/dev/null 2>&1; then \
-	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; wish log/.cov_gui.tcl & \
+	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; \
+	  wbin=$$(command -v wish); wroot=$$(dirname $$(dirname "$$wbin")); \
+	  tcl_dir=$$(ls -d /usr/share/tcl8* /usr/lib64/tcl8* /usr/lib/tcl8* "$$wroot"/lib/tcl8* "$$wroot"/share/tcl8* 2>/dev/null | head -n 1); \
+	  tk_dir=$$(ls -d /usr/share/tk8* /usr/lib64/tk8* /usr/lib/tk8* "$$wroot"/lib/tk8* "$$wroot"/share/tk8* 2>/dev/null | head -n 1); \
+	  TCL_LIBRARY="$$tcl_dir" TK_LIBRARY="$$tk_dir" wish log/.cov_gui.tcl & \
 	else \
 	  cat log/IP_MERGE_coverage_details.txt; \
 	fi
@@ -358,8 +368,15 @@ else
 	  echo "No coverage DB found for $(TESTNAME). Run with COV=ON first."; exit 1; }; \
 	if [ -n "$(IMC_BIN)" ]; then \
 	  "$(IMC_BIN)" -gui -load "$$cov_dir" & \
+	elif [ -x /usr/bin/wish ] && [ -f /usr/share/tcl8.6/init.tcl ]; then \
+	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; \
+	  env -u LD_LIBRARY_PATH -u TCL_LIBRARY -u TK_LIBRARY PATH=/usr/bin:/bin /usr/bin/wish log/.cov_gui.tcl & \
 	elif command -v wish >/dev/null 2>&1; then \
-	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; wish log/.cov_gui.tcl & \
+	  printf "%s\n" "$$COV_GUI_TCL" > log/.cov_gui.tcl; \
+	  wbin=$$(command -v wish); wroot=$$(dirname $$(dirname "$$wbin")); \
+	  tcl_dir=$$(ls -d /usr/share/tcl8* /usr/lib64/tcl8* /usr/lib/tcl8* "$$wroot"/lib/tcl8* "$$wroot"/share/tcl8* 2>/dev/null | head -n 1); \
+	  tk_dir=$$(ls -d /usr/share/tk8* /usr/lib64/tk8* /usr/lib/tk8* "$$wroot"/lib/tk8* "$$wroot"/share/tk8* 2>/dev/null | head -n 1); \
+	  TCL_LIBRARY="$$tcl_dir" TK_LIBRARY="$$tk_dir" wish log/.cov_gui.tcl & \
 	else \
 	  cat "log/$(TESTNAME)_$(SEED)_coverage.txt" 2>/dev/null || true; \
 	fi
